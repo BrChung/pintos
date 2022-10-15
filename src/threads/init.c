@@ -63,6 +63,7 @@ static void paging_init (void);
 static char **read_command_line (void);
 static char **parse_options (char **argv);
 static void run_actions (char **argv);
+static void run_interactive (void);
 static void usage (void);
 
 #ifdef FILESYS
@@ -133,7 +134,9 @@ pintos_init (void)
     /* Run actions specified on kernel command line. */
     run_actions (argv);
   } else {
-    // TODO: no command line passed to kernel. Run interactively 
+    // no command line passed to kernel. Run interactively 
+    run_interactive ();
+    printf ("Execution of 'interactive' complete.\n");
   }
 
   /* Finish up. */
@@ -345,6 +348,42 @@ run_actions (char **argv)
       argv += a->argc;
     }
   
+}
+
+/* Run kernel in interactive */
+static void
+run_interactive (void)
+{
+  bool running_interactive = true;
+  char whoami_command[7] = "whoami\0";
+  char exit_command[5] = "exit\0";
+  const int COMMAND_SIZE = 80;
+  input_init ();
+
+  while (running_interactive) {
+    char command[COMMAND_SIZE];
+    printf ("\nCS143A> ");
+
+    // TODO: Support backspaces
+    for (int i = 0; i < COMMAND_SIZE; i++) {
+      char c = input_getc ();    // wait for next input char
+      command[i] = c;
+      printf ("%c", c);
+      if (c == 10 || c == 13) { // LF or CR
+        command[i] = '\0';
+        break;
+      }
+    }
+
+    if (strcmp (command, exit_command) == 0) {
+      printf ("\nExiting interactive...\n");
+      running_interactive = false;
+    } else if (strcmp (command, whoami_command) == 0) {
+      printf ("\nBrian Chung\n");
+    } else {
+      printf ("\nInvalid command: %s\n", command);
+    }
+  }
 }
 
 /* Prints a kernel command line help message and powers off the
