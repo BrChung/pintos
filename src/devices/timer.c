@@ -105,10 +105,9 @@ timer_sleep (int64_t ticks)
   // while (timer_elapsed (start) < ticks) 
   //   thread_yield ();
 
-  /*setting thread structure property of wakeup timer*/
+  /* setting wakeup timer */
   thread_set_wakeup_timer(start + ticks);
 
-  /*code from lecture that puts thread to sleep*/
   intr_disable();
   thread_block();
   intr_enable();  
