@@ -5,3 +5,10 @@ but realistic enough to understand OS in depth (it can run x86 machine and simul
 including QEMU, Bochs and VMWare Player!). The main source code, documentation and assignments 
 are developed by Ben Pfaff and others from Stanford (refer to its [LICENSE](./LICENSE)).
 This repository also contains some changes made by [Ryan Huang](huang@cs.jhu.edu).
+
+## Running Tests
+
+```bash
+cd ~/Pintos/pintos/src/threads/build
+make check
+```
