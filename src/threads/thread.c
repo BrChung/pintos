@@ -338,8 +338,8 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current()->priorities[0] = new_priority;
-  if(thread_current()->size==1)
+  thread_current()->priority_list[0] = new_priority;
+  if(thread_current()->p_size==1)
   { 
     thread_current ()->priority = new_priority;
     thread_yield();
@@ -471,13 +471,13 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
  
- /* Make list of priorities and not the number of 
+ /* Make list of priority_list and not the number of 
     locks with each thread*/
-  t->priorities[0] = priority;
-  t->donation_no=0;
-  t->size = 1;
+  t->priority_list[0] = priority;
+  t->d_num=0;
+  t->p_size = 1;
   t->magic = THREAD_MAGIC;
-  t->waiting_for=NULL;
+  t->wait=NULL;
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -618,18 +618,14 @@ bool compare_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
 /* Searches the stack of Donation priority list for the priority of the donor
    thread to remove it from the list and change the current priority 
    accordingly*/
-void search_array(struct thread *cur,int elem)
-{ int found=0;
-  for(int i=0;i<(cur->size)-1;i++)
+void find_donor(struct thread *t, int d)
+{ 
+  for (int i=0; i < (t->p_size) - 1; i++)
   {
-  if(cur->priorities[i]==elem)
+  if(t->priority_list[i] == d)
     {
-     found=1;
-    }
-  if(found==1)
-    {
-     cur->priorities[i]=cur->priorities[i+1];
+     t->priority_list[i] = t->priority_list[i+1];
     }
   }
-  cur->size -=1;
+  t->p_size -= 1;
 }

@@ -104,7 +104,7 @@ timer_sleep (int64_t ticks)
   struct thread *cur = thread_current ();
 
   int64_t start = timer_ticks ();
-  thread_current()->wakeup_time = start + ticks;
+  thread_current()->wakeup_timer = start + ticks;
   list_insert_ordered(&sleeping_threads, &cur->elem, compare_time, 0);
 
   enum intr_level old_level;
@@ -277,9 +277,9 @@ bool compare_time(struct list_elem *l1, struct list_elem *l2, void *aux)
   struct thread *t1 = list_entry(l1,struct thread,elem);
   struct thread *t2 = list_entry(l2,struct thread,elem);
 
-  if( t1->wakeup_time < t2->wakeup_time)
+  if( t1->wakeup_timer < t2->wakeup_timer)
     return true;
-  else if (t1->wakeup_time == t2->wakeup_time){
+  else if (t1->wakeup_timer == t2->wakeup_timer){
     if( t1->priority > t2->priority)
       return true;
   }
@@ -296,7 +296,7 @@ void wakeup_thread() {
 
     struct list_elem *top_elem = list_front(&sleeping_threads);
 
-    if (list_entry(top_elem, struct thread, elem)->wakeup_time <= ticks){
+    if (list_entry(top_elem, struct thread, elem)->wakeup_timer <= ticks){
       struct thread *top_thread = list_entry(top_elem, struct thread, elem);
       list_pop_front(&sleeping_threads);
       thread_unblock(top_thread);
