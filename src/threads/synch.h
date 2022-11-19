@@ -21,9 +21,8 @@ struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
-    bool is_donated;            /* Checks if lock is donated to a thread or not*/
+    bool donate;
   };
-
 void lock_init (struct lock *);
 void lock_acquire (struct lock *);
 bool lock_try_acquire (struct lock *);
@@ -41,7 +40,7 @@ void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
-bool compare_sema(struct list_elem *l1, struct list_elem *l2,void *aux);
+bool compare_semaphore(struct list_elem *l1, struct list_elem *l2);
 
 /* Optimization barrier.
 

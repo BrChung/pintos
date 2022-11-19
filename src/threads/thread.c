@@ -5,7 +5,6 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -477,7 +476,7 @@ init_thread (struct thread *t, const char *name, int priority)
   
   t->priority_list[0] = priority;
   t->wait = NULL;
-  
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -597,10 +596,6 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-
-/* Searches the stack of Donation priority list for the priority of the donor
-   thread to remove it from the list and change the current priority 
-   accordingly*/
 void find_donor(struct thread *t, int d)
 { 
   for (int i=0; i < (t->p_size) - 1; i++)
@@ -613,8 +608,6 @@ void find_donor(struct thread *t, int d)
   t->p_size -= 1;
 }
 
-/* Compares the priority of the two threards and returns true if priority 
-   of first thread is greater than the second thread. */
 bool compare_priority(struct list_elem *list1, struct list_elem *list2)
 { 
   struct thread *t1 = list_entry(list1, struct thread, elem);
@@ -626,8 +619,7 @@ bool compare_priority(struct list_elem *list1, struct list_elem *list2)
   return false;
 }
 
-/*Sorts the ready_list present in thread.c*/
- void sort_ready_list()
+ void ready_sort()
 {
   list_sort(&ready_list, compare_priority, 0);
 }

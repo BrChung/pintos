@@ -1,4 +1,3 @@
-
 /* This file is derived from source code for the Nachos
    instructional operating system.  The Nachos copyright notice
    is reproduced in full below. */
@@ -30,7 +29,6 @@
 #include "threads/synch.h"
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -119,15 +117,10 @@ sema_up (struct semaphore *sema)
     list_sort(&sema->waiters, compare_priority, 0);
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
               struct thread, elem));
-  
   }
-  
   sema->value++;
   thread_yield();
-  
-  
   intr_set_level (old_level);
-  
 }
 
 static void sema_test_helper (void *sema_);
@@ -189,7 +182,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
-  lock->is_donated=false;
+  lock->donate = false;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -202,36 +195,47 @@ lock_init (struct lock *lock)
    we need to sleep. */
 void
 lock_acquire (struct lock *lock)
-{
-  
+{  
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   
-  if(lock->holder != NULL)
+  if (lock->holder != NULL)
   {
-    thread_current()->wait= lock;
-    if(lock->holder->priority < thread_current()->priority)
-    {  struct thread *temp=thread_current();
-       while(temp->wait!=NULL)
-       {
-         struct lock *cur_lock=temp->wait;
-         cur_lock->holder->priority_list[cur_lock->holder->p_size] = temp->priority;
-         cur_lock->holder->p_size+=1;
-         cur_lock->holder->priority = temp->priority;
-         if(cur_lock->holder->status == THREAD_READY)
-           break;
-         temp=cur_lock->holder;
-       }
-       if(!lock->is_donated)
-         lock->holder->d_num +=1;
-       lock->is_donated = true;
-       sort_ready_list();
+    thread_current()->wait = lock;
+    if (lock->holder->priority < thread_current()->priority)
+    {  
+      struct thread *t = thread_current();
+      while (t->wait != NULL)
+      {
+        struct lock *waitlock = t->wait;
+        struct thread *hold = waitlock->holder;
+        int waitlock_size = hold->p_size;
+        hold->priority_list[waitlock_size] = t->priority;
+        hold->priority = t->priority;
+        hold->p_size += 1;
+        
+        if (hold->status == THREAD_READY)
+        {
+          break;
+        }
+        else 
+        {
+          t = hold;
+        }
+      }
+
+      if (!lock->donate)
+      {
+        lock->holder->d_num += 1;
+      }
+      lock->donate = true;
+      ready_sort();
     }
   }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-  lock->holder->wait=NULL;
+  lock->holder->wait = NULL;
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -243,7 +247,6 @@ lock_acquire (struct lock *lock)
 bool
 lock_try_acquire (struct lock *lock)
 {
-
   bool success;
 
   ASSERT (lock != NULL);
@@ -265,21 +268,20 @@ lock_release (struct lock *lock)
 { 
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+  struct semaphore *sema = &lock->semaphore;
+  list_sort(&sema->waiters, compare_priority, 0);
 
-  struct semaphore *lock_sema=&lock->semaphore;
-  list_sort(&lock_sema->waiters, compare_priority, 0);
-
-  if (lock->is_donated)
+  if (lock->donate)
   {
     thread_current()->d_num -=1;
-    int d = list_entry (list_front (&lock_sema->waiters),struct thread, elem)->priority;
-    find_donor(thread_current(), d);
-    thread_current()->priority = thread_current()->priority_list[(thread_current()->p_size)-1];
-    lock->is_donated = false;
+    int priority = list_entry(list_front(&sema->waiters), struct thread, elem)->priority;
+    find_donor(thread_current(), priority);
+    thread_current()->priority = thread_current()->priority_list[(thread_current()->p_size) - 1];
+    lock->donate = false;
   }
-  if(thread_current()->d_num ==0)
+  if(thread_current()->d_num == 0)
   {
-    thread_current()-> p_size=1;
+    thread_current()-> p_size = 1;
     thread_current()-> priority = thread_current()->priority_list[0];
   }
   lock->holder = NULL;
@@ -366,7 +368,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
-  list_sort(&cond->waiters, compare_sema, 0);
+  list_sort(&cond->waiters, compare_semaphore, 0);
   if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
@@ -388,15 +390,19 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
-/*sorts the corresponding semaphores on the basis of the priority
-of the first thread in waiting list of each semaphore.*/
-bool compare_sema(struct list_elem *l1, struct list_elem *l2,void *aux)
+bool compare_semaphore(struct list_elem *list1, struct list_elem *list2)
 {
-  struct semaphore_elem *t1 = list_entry(l1,struct semaphore_elem,elem);
-  struct semaphore_elem *t2 = list_entry(l2,struct semaphore_elem,elem);
-  struct semaphore *s1=&t1->semaphore;
-  struct semaphore *s2=&t2->semaphore;
-  if( list_entry (list_front(&s1->waiters), struct thread, elem)->priority > list_entry (list_front(&s2->waiters),struct thread, elem)->priority)
+  struct semaphore_elem *e1 = list_entry(list1, struct semaphore_elem, elem);
+  struct semaphore_elem *e2 = list_entry(list2, struct semaphore_elem, elem);
+  struct semaphore *s1 = &e1->semaphore;
+  struct semaphore *s2 = &e2->semaphore;
+  int p1 = list_entry(list_front(&s1->waiters), struct thread, elem)->priority;
+  int p2 = list_entry(list_front(&s2->waiters), struct thread, elem)->priority;
+
+  if(p1 > p2) {
     return true;
-  return false;
+  }
+  else {
+    return false;
+  }
 }
