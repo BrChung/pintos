@@ -145,8 +145,8 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void find_donor(struct thread *t, int d);
-bool compare_priority(struct list_elem *l1, struct list_elem *l2, void *aux);
-void sort_ready_list(void);
+bool compare_priority(struct list_elem *list1, struct list_elem *list2);
+void sort_ready_list();
 
 
 #endif /* threads/thread.h */ 

@@ -339,7 +339,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current()->priority_list[0] = new_priority;
-  if(thread_current()->p_size==1)
+  if (thread_current()->p_size == 1)
   { 
     thread_current ()->priority = new_priority;
     thread_yield();
@@ -470,14 +470,14 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
- 
- /* Make list of priority_list and not the number of 
-    locks with each thread*/
-  t->priority_list[0] = priority;
-  t->d_num=0;
-  t->p_size = 1;
   t->magic = THREAD_MAGIC;
-  t->wait=NULL;
+
+  t->p_size = 1;
+  t->d_num = 0;
+  
+  t->priority_list[0] = priority;
+  t->wait = NULL;
+  
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -598,23 +598,6 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 
-/* Compares the priority of the two threards and returns true if priority 
-   of first thread is greater than the second thread. */
-bool compare_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
-{ 
-  struct thread *t1 = list_entry(l1,struct thread,elem);
-  struct thread *t2 = list_entry(l2,struct thread,elem);
-  if( t1->priority > t2->priority)
-    return true;
-  return false;
-}
-
-/*Sorts the ready_list present in thread.c*/
- void sort_ready_list(void)
-{
-  list_sort(&ready_list, compare_priority, 0);
-}
-
 /* Searches the stack of Donation priority list for the priority of the donor
    thread to remove it from the list and change the current priority 
    accordingly*/
@@ -629,3 +612,23 @@ void find_donor(struct thread *t, int d)
   }
   t->p_size -= 1;
 }
+
+/* Compares the priority of the two threards and returns true if priority 
+   of first thread is greater than the second thread. */
+bool compare_priority(struct list_elem *list1, struct list_elem *list2)
+{ 
+  struct thread *t1 = list_entry(list1, struct thread, elem);
+  struct thread *t2 = list_entry(list2, struct thread, elem);
+  if (t1->priority > t2->priority)
+  {
+    return true;
+  }
+  return false;
+}
+
+/*Sorts the ready_list present in thread.c*/
+ void sort_ready_list()
+{
+  list_sort(&ready_list, compare_priority, 0);
+}
+
