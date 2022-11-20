@@ -390,12 +390,13 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
-bool compare_semaphore(struct list_elem *list1, struct list_elem *list2)
+bool compare_semaphore(const struct list_elem *list1, const struct list_elem *list2, void *aux)
 {
   struct semaphore_elem *e1 = list_entry(list1, struct semaphore_elem, elem);
   struct semaphore_elem *e2 = list_entry(list2, struct semaphore_elem, elem);
   struct semaphore *s1 = &e1->semaphore;
   struct semaphore *s2 = &e2->semaphore;
+  aux = aux;
   int p1 = list_entry(list_front(&s1->waiters), struct thread, elem)->priority;
   int p2 = list_entry(list_front(&s2->waiters), struct thread, elem)->priority;
 

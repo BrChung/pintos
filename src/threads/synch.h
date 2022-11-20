@@ -40,7 +40,7 @@ void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
-bool compare_semaphore(struct list_elem *l1, struct list_elem *l2);
+bool compare_semaphore(const struct list_elem *l1, const struct list_elem *l2, void *aux);
 
 /* Optimization barrier.
 

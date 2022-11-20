@@ -239,7 +239,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered (&ready_list, &t->elem, compare_priority, 0);
+  list_insert_ordered(&ready_list, &t->elem, compare_priority, 0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -310,7 +310,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_insert_ordered (&ready_list, &cur->elem, compare_priority, 0);
+    list_insert_ordered(&ready_list, &cur->elem, compare_priority, 0);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -608,10 +608,11 @@ void find_donor(struct thread *t, int d)
   t->p_size -= 1;
 }
 
-bool compare_priority(struct list_elem *list1, struct list_elem *list2)
+bool compare_priority(const struct list_elem *list1, const struct list_elem *list2, void *aux)
 { 
   struct thread *t1 = list_entry(list1, struct thread, elem);
   struct thread *t2 = list_entry(list2, struct thread, elem);
+  aux = aux;
   if (t1->priority > t2->priority)
   {
     return true;

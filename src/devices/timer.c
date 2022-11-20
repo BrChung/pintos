@@ -261,10 +261,11 @@ real_time_delay (int64_t num, int32_t denom)
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
 }
 
-bool compare_time(struct list_elem *list1, struct list_elem *list2)
+bool compare_time(const struct list_elem *list1, const struct list_elem *list2, void *aux)
 {
   struct thread *t1 = list_entry(list1, struct thread, elem);
   struct thread *t2 = list_entry(list2, struct thread, elem);
+  aux = aux;
 
   if (t1->wakeup_timer < t2->wakeup_timer)
   {
