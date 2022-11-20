@@ -28,8 +28,7 @@ void timer_ndelay (int64_t nanoseconds);
 
 void timer_print_stats (void);
 
-bool compare_time(struct list_elem *l1, struct list_elem *l2, void *aux);
-
+bool compare_time(struct list_elem *list1, struct list_elem *list2);
 void wakeup_thread();
 
 #endif /* devices/timer.h */
