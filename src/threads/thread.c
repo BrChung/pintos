@@ -1,3 +1,4 @@
+
 #include "threads/thread.h"
 #include <debug.h>
 #include <stddef.h>
@@ -200,6 +201,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  thread_yield();
 
   return tid;
 }
@@ -237,7 +239,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, compare_priority, 0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -307,42 +309,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  if (cur != idle_thread)
+    list_insert_ordered (&ready_list, &cur->elem, compare_priority, 0);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
-}
-
-/* New function that sets current threads wakeup timer to new_wakeup */
-void
-thread_set_wakeup_timer(int new_wakeup)
-{
-  thread_current()->wakeup_timer = new_wakeup;
-}
-
-int64_t
-thread_get_wakeup(struct thread *t)
-{
-  return t->wakeup_timer;
-}
-
-/* New function that returns status of thread with code of 1,2,3,or 4 */
-int 
-thread_get_status(struct thread *t)
-{
-  switch(t->status){
-    case THREAD_READY:
-      return 1;
-    case THREAD_RUNNING:
-      return 2;
-    case THREAD_BLOCKED:
-      return 3;
-    case THREAD_DYING:
-      return 4;
-    default:
-      return 0; /*error*/
-  }
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
@@ -366,7 +337,12 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  thread_current()->priority_list[0] = new_priority;
+  if (thread_current()->p_size == 1)
+  { 
+    thread_current ()->priority = new_priority;
+    thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -495,6 +471,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
+  t->p_size = 1;
+  t->d_num = 0;
+  
+  t->priority_list[0] = priority;
+  t->wait = NULL;
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -613,3 +595,32 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+void find_donor(struct thread *t, int d)
+{ 
+  for (int i=0; i < (t->p_size) - 1; i++)
+  {
+  if(t->priority_list[i] == d)
+    {
+     t->priority_list[i] = t->priority_list[i+1];
+    }
+  }
+  t->p_size -= 1;
+}
+
+bool compare_priority(struct list_elem *list1, struct list_elem *list2)
+{ 
+  struct thread *t1 = list_entry(list1, struct thread, elem);
+  struct thread *t2 = list_entry(list2, struct thread, elem);
+  if (t1->priority > t2->priority)
+  {
+    return true;
+  }
+  return false;
+}
+
+ void ready_sort()
+{
+  list_sort(&ready_list, compare_priority, 0);
+}
+

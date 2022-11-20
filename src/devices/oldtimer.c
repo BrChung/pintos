@@ -3,7 +3,6 @@
 #include <inttypes.h>
 #include <round.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
@@ -31,8 +30,6 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
-static struct list threads_slept;
-
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -40,7 +37,6 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-  list_init(&threads_slept);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -64,7 +60,7 @@ timer_calibrate (void)
   /* Refine the next 8 bits of loops_per_tick. */
   high_bit = loops_per_tick;
   for (test_bit = high_bit >> 1; test_bit != high_bit >> 10; test_bit >>= 1)
-    if (!too_many_loops (loops_per_tick | test_bit))
+    if (!too_many_loops (high_bit | test_bit))
       loops_per_tick |= test_bit;
 
   printf ("%'"PRIu64" loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
@@ -93,22 +89,11 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  struct lock lock;
-  lock_init (&lock);
-  lock_acquire (&lock);
+  int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
-
-  struct thread *t = thread_current();
-  int64_t s = timer_ticks();
-
-  thread_current()->wakeup_timer = s + ticks;
-  list_insert_ordered(&threads_slept, &t->elem, compare_time, 0);
-
-  enum intr_level old_level = intr_disable();
-  thread_block();
-  intr_set_level(old_level);
-  lock_release (&lock);
+  while (timer_elapsed (start) < ticks) 
+    thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -186,7 +171,6 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  wakeup_thread();
   thread_tick ();
 }
 
@@ -259,46 +243,4 @@ real_time_delay (int64_t num, int32_t denom)
      the possibility of overflow. */
   ASSERT (denom % 1000 == 0);
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
-}
-
-bool compare_time(struct list_elem *list1, struct list_elem *list2)
-{
-  struct thread *t1 = list_entry(list1, struct thread, elem);
-  struct thread *t2 = list_entry(list2, struct thread, elem);
-
-  if (t1->wakeup_timer < t2->wakeup_timer)
-  {
-    return true;
-  }
-  else if (t1->wakeup_timer == t2->wakeup_timer && t1->priority > t2->priority)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-/* Wakes a sleeping thread who need to wake up.
-   Unblock the thread and put in the ready list. */
-void wakeup_thread() {
-  while (true) {
-    if (list_empty(&threads_slept))
-    {
-      return;
-    }
-
-    struct list_elem *front_element = list_front(&threads_slept);
-    int64_t timer = list_entry(front_element, struct thread, elem)-> wakeup_timer;
-    if (timer <= ticks)
-    {
-      struct thread *front_thread = list_entry(front_element, struct thread, elem);
-      list_pop_front(&threads_slept);
-      thread_unblock(front_thread);
-    }
-    else {
-      return;
-    }
-  }
 }
