@@ -3,32 +3,32 @@
 
 #include <round.h>
 #include <stdint.h>
-#include <list.h>
-#include <stdbool.h>
 
-/* Number of timer interrupts per second. */
-#define TIMER_FREQ 100
+/*
+CHANGED IN PINTOS ASSIGNMENT 3 FROM 100 TO 99.
 
-void timer_init (void);
-void timer_calibrate (void);
+Number of timer interrupts per second.
+*/
+#define TIMER_FREQ 99
 
-int64_t timer_ticks (void);
-int64_t timer_elapsed (int64_t);
+void timer_init(void);
+void timer_calibrate(void);
+
+int64_t timer_ticks(void);
+int64_t timer_elapsed(int64_t);
 
 /* Sleep and yield the CPU to other threads. */
-void timer_sleep (int64_t ticks);
-void timer_msleep (int64_t milliseconds);
-void timer_usleep (int64_t microseconds);
-void timer_nsleep (int64_t nanoseconds);
+void timer_sleep(int64_t ticks);
+void timer_msleep(int64_t milliseconds);
+void timer_usleep(int64_t microseconds);
+void timer_nsleep(int64_t nanoseconds);
 
 /* Busy waits. */
-void timer_mdelay (int64_t milliseconds);
-void timer_udelay (int64_t microseconds);
-void timer_ndelay (int64_t nanoseconds);
+void timer_mdelay(int64_t milliseconds);
+void timer_udelay(int64_t microseconds);
+void timer_ndelay(int64_t nanoseconds);
 
-void timer_print_stats (void);
+void timer_print_stats(void);
 
-bool compare_time(const struct list_elem *list1, const struct list_elem *list2, void *aux);
-void wakeup_thread(void);
-
+// void try_to_wake_up(struct thread *t, void *aux);
 #endif /* devices/timer.h */
