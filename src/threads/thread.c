@@ -338,7 +338,6 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-    // list_push_back (&ready_list, &cur->elem); // FLAG: for some reason this is needed to pass tests/threads/mlfqs-nice-10
     list_insert_ordered(&ready_list, &cur->elem, compare_priority, 0);
   }
   cur->status = THREAD_READY;
