@@ -129,6 +129,8 @@ thread_tick (void)
 {
   struct thread *t = thread_current ();
 
+  FPR_INC(&t->recent_cpu);
+
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
@@ -189,6 +191,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
+  enum intr_level old_level;
 
   ASSERT (function != NULL);
 
@@ -200,6 +203,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
+  old_level = intr_disable();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -216,9 +221,15 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  intr_set_level(old_level);
+
   /* Add to run queue. */
   thread_unblock (t);
   thread_yield();
+
+  if (t->priority > thread_current()->priority) {
+    thread_yield();
+  }
 
   return tid;
 }
@@ -326,8 +337,10 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread)
+  if (cur != idle_thread) {
+    // list_push_back (&ready_list, &cur->elem); // FLAG: for some reason this is needed to pass tests/threads/mlfqs-nice-10
     list_insert_ordered(&ready_list, &cur->elem, compare_priority, 0);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -473,24 +486,22 @@ thread_set_nice (int nice UNUSED)
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return FPR_TO_INT(thread_current()->nice);
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return FPR_TO_INT(FPR_MUL_INT(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  FPReal a = FPR_MUL_INT(thread_current()->recent_cpu, 100);
+  return FPR_TO_INT(a);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
