@@ -1,156 +1,135 @@
-/*
- * fpr_arith.h
- *
- *  Created on: 20/03/2013
- *      Author: Eduardo Bezerra - kdubezerra@gmail.com
- */
 
 #ifndef FPR_ARITH_H_
 #define FPR_ARITH_H_
 
-/* FIXED POINT REAL
-
-   This header contains the definition of the FPReal type, which
-   is a signed 32 bits integer. It has the following structure:
-
-   32 bits:
-      1 for sign
-      17 for integer part
-      14 for fractional part
-
-   See section B.6 of Pintos documentation for a detailed explanation:
-   http://www2.icorsi.ch/mod/resource/view.php?id=91264
-
-*/
-
 /* Fixed-point real type. */
-typedef int FPReal;
+typedef int Float;
 
 /* Number of bits reserved for the fractional part. */
 #define FRACBITS 14
 
-/* Convert an FPReal to int */
-static inline int FPR_TO_INT (FPReal fpr);
+/* Convert an Float to int */
+static inline int FPR_TO_INT (Float fpr);
 
-/* Convert an int to FPReal */
-static inline FPReal INT_TO_FPR (int);
+/* Convert an int to Float */
+static inline Float INT_TO_FPR (int);
 
-/* Increment an FPReal by 1 */
-static inline FPReal FPR_INC (FPReal *);
+/* Increment an Float by 1 */
+static inline Float FPR_INC (Float *);
 
-/* Add two FPReals */
-static inline FPReal FPR_ADD_FPR (FPReal, FPReal);
+/* Add two Floats */
+static inline Float FPR_ADD_FPR (Float, Float);
 
-/* Subtract one FPReal from another */
-static inline FPReal FPR_SUB_FPR (FPReal, FPReal);
+/* Subtract one Float from another */
+static inline Float FPR_SUB_FPR (Float, Float);
 
-/* Multiply an FPReal by an int */
-static inline FPReal FPR_MUL_INT (FPReal, int);
+/* Multiply an Float by an int */
+static inline Float FPR_MUL_INT (Float, int);
 
-/* Divide an FPReal by an int */
-static inline FPReal FPR_DIV_INT (FPReal, int);
+/* Divide an Float by an int */
+static inline Float FPR_DIV_INT (Float, int);
 
-/* Add an int to an FPReal */
-static inline FPReal FPR_ADD_INT (FPReal, int);
+/* Add an int to an Float */
+static inline Float FPR_ADD_INT (Float, int);
 
-/* Subtract an int from an FPReal */
-static inline FPReal FPR_SUB_INT (FPReal, int);
+/* Subtract an int from an Float */
+static inline Float FPR_SUB_INT (Float, int);
 
-/* Multiply two FPReals */
-static inline FPReal FPR_MUL_FPR (FPReal, FPReal);
+/* Multiply two Floats */
+static inline Float FPR_MUL_FPR (Float, Float);
 
-/* Divide an FPReal by another */
-static inline FPReal FPR_DIV_FPR (FPReal, FPReal);
+/* Divide an Float by another */
+static inline Float FPR_DIV_FPR (Float, Float);
 
-/* Divide two ints and return the real result as an FPReal */
-static inline FPReal INT_DIV_INT (int, int);
+/* Divide two ints and return the real result as an Float */
+static inline Float INT_DIV_INT (int, int);
 
 
 
 
 /* ==================================*/
-/* FPReal functions implementations. */
+/* Float functions implementations. */
 
-/* Convert an FPReal to int */
+/* Convert an Float to int */
 static inline int
-FPR_TO_INT (FPReal fpr) {
+FPR_TO_INT (Float fpr) {
    return fpr >> FRACBITS;
 }
 
-/* Convert an int to FPReal */
-static inline FPReal
+/* Convert an int to Float */
+static inline Float
 INT_TO_FPR (int i) {
    return i << FRACBITS;
 }
 
-/* Increment an FPReal by 1 */
+/* Increment an Float by 1 */
 static inline
-FPReal FPR_INC (FPReal * fpr) {
+Float FPR_INC (Float * fpr) {
    (*fpr) += (1 << FRACBITS);
    return *fpr;
 }
 
-/* Add two FPReals */
+/* Add two Floats */
 static inline
-FPReal FPR_ADD_FPR (FPReal fpr_a, FPReal fpr_b) {
+Float FPR_ADD_FPR (Float fpr_a, Float fpr_b) {
    return fpr_a + fpr_b;
 }
 
-/* Subtract one FPReal from another */
+/* Subtract one Float from another */
 static inline
-FPReal FPR_SUB_FPR (FPReal fpr_a, FPReal fpr_b) {
+Float FPR_SUB_FPR (Float fpr_a, Float fpr_b) {
    return fpr_a - fpr_b;
 }
 
-/* Multiply an FPReal by an int */
+/* Multiply an Float by an int */
 static inline
-FPReal FPR_MUL_INT (FPReal fpr_a, int b) {
+Float FPR_MUL_INT (Float fpr_a, int b) {
    return fpr_a * b;
 }
 
-/* Divide an FPReal by an int */
+/* Divide an Float by an int */
 static inline
-FPReal FPR_DIV_INT (FPReal fpr_a, int b) {
+Float FPR_DIV_INT (Float fpr_a, int b) {
    return fpr_a / b;
 }
 
-/* Add an int to an FPReal */
+/* Add an int to an Float */
 static inline
-FPReal FPR_ADD_INT (FPReal fpr_a, int b) {
+Float FPR_ADD_INT (Float fpr_a, int b) {
    return fpr_a + (b << FRACBITS);
 }
 
-/* Subtract an int from an FPReal */
+/* Subtract an int from an Float */
 static inline
-FPReal FPR_SUB_INT (FPReal fpr_a, int b) {
+Float FPR_SUB_INT (Float fpr_a, int b) {
    return fpr_a - (b << FRACBITS);
 }
 
-/* Multiply two FPReals */
+/* Multiply two Floats */
 static inline
-FPReal FPR_MUL_FPR (FPReal fpr_a, FPReal fpr_b) {
+Float FPR_MUL_FPR (Float fpr_a, Float fpr_b) {
    int64_t extended_a = fpr_a;
    extended_a *= (int64_t) fpr_b;
    extended_a >>= FRACBITS;
-   return (FPReal) extended_a;
+   return (Float) extended_a;
 }
 
-/* Divide an FPReal by another */
+/* Divide an Float by another */
 static inline
-FPReal FPR_DIV_FPR (FPReal fpr_a, FPReal fpr_b) {
+Float FPR_DIV_FPR (Float fpr_a, Float fpr_b) {
    int64_t extended_a = fpr_a;
    extended_a <<= FRACBITS;
    extended_a /= (int64_t) fpr_b;
-   return (FPReal) extended_a;
+   return (Float) extended_a;
 }
 
-/* Divide two ints and return the real result as an FPReal */
+/* Divide two ints and return the real result as an Float */
 static inline
-FPReal INT_DIV_INT (int a, int b) {
+Float INT_DIV_INT (int a, int b) {
    int64_t exta = a;
    exta <<= FRACBITS;
    exta /= b;
-   return (FPReal) exta;
+   return (Float) exta;
 }
 
-#endif /* FPR_ARITH_H_ */
+#endif

@@ -110,7 +110,7 @@ struct thread
 
     /* Support for mlfqs */
     int nice;
-    FPReal recent_cpu;
+    Float recent_cpu;
   };
 
 /* If false (default), use round-robin scheduler.

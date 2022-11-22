@@ -74,7 +74,7 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
 /* Current load average */
-static FPReal load_avg = 0;
+static Float load_avg = 0;
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -393,10 +393,10 @@ void
 thread_update_recent_cpu(struct thread* t, void* aux)
 {
   if (t->status == THREAD_READY || t->status == THREAD_RUNNING) {
-    FPReal* c = (FPReal*)aux;
+    Float* c = (Float*)aux;
 
     // (2 * load_avg) / (2 * load_avg + 1) * recent_cpu
-    FPReal d = FPR_MUL_FPR(*c, t->recent_cpu);
+    Float d = FPR_MUL_FPR(*c, t->recent_cpu);
 
     // Calculates d + 1, and returns its integer representation.
     t->recent_cpu = FPR_ADD_INT(d, t->nice);
@@ -408,13 +408,13 @@ void
 thread_update_recent_cpus(void)
 {
   // (2 * load_avg)
-  FPReal a = FPR_MUL_INT(load_avg, 2);
+  Float a = FPR_MUL_INT(load_avg, 2);
 
   // (2 * load_avg + 1)
-  FPReal b = FPR_ADD_INT(a, 1);
+  Float b = FPR_ADD_INT(a, 1);
 
   // (2 * load_avg) / (2 * load_avg + 1)
-  FPReal c = FPR_DIV_FPR(a, b);
+  Float c = FPR_DIV_FPR(a, b);
 
   // Update the recent_cpu of all threads
   thread_foreach(thread_update_recent_cpu, &c);
@@ -440,12 +440,12 @@ void
 thread_update_load_avg(void)
 {
   // 59 * load_avg
-  FPReal a = FPR_MUL_INT(load_avg, 59);
+  Float a = FPR_MUL_INT(load_avg, 59);
 
   int c = num_of_ready_or_running_threads();
 
   // 59*load_avg +  running_or_ready_threads
-  FPReal b = FPR_ADD_INT(a, c);
+  Float b = FPR_ADD_INT(a, c);
 
   load_avg = FPR_DIV_INT(b, 60);
 }
@@ -499,7 +499,7 @@ thread_get_load_avg (void)
 int
 thread_get_recent_cpu (void) 
 {
-  FPReal a = FPR_MUL_INT(thread_current()->recent_cpu, 100);
+  Float a = FPR_MUL_INT(thread_current()->recent_cpu, 100);
   return FPR_TO_INT(a);
 }
 
