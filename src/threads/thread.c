@@ -188,7 +188,7 @@ thread_tick(void)
   thread_tick is called at each timer interrupt,
   where we increment the recent_cpu.
   */
-  FPR_INC(&t->recent_cpu);
+  FP_INC(&t->recent_cpu);
 
   FP_INC(&t->recent_cpu);
 
@@ -270,14 +270,6 @@ thread_create(const char* name, int priority, thread_func* function, void* aux)
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
-  tid_t tid;
-  enum intr_level old_level;
-
-  // fake stack frames
-  struct kernel_thread_frame* kf;
-  struct switch_entry_frame* ef;
-  struct switch_threads_frame* sf;
-
   tid_t tid;
   enum intr_level old_level;
 
@@ -630,30 +622,6 @@ thread_set_nice(int nice UNUSED)
   thread_set_priority(thread_calc_mlfqs_priority(thread_current()));
 }
 
-/*
-IMPLEMENTED IN PINTOS ASSIGNMENT 3.
-
-Returns the current thread's nice value.
-*/
-int
-thread_get_nice(void)
-{
-  return FPR_TO_INT(thread_current()->nice);
-}
-
-/*
-IMPLEMENTED IN PINTOS ASSIGNMENT 3.
-
-Returns 100 times the system load average:
-
-return load_avg * 100.
-*/
-int
-thread_get_load_avg(void)
-{
-  return FPR_TO_INT(FPR_MUL_INT(load_avg, 100));
-}
-
 static void
 thread_update_recent_cpu(struct thread* t, void* aux)
 {
@@ -770,29 +738,6 @@ thread_get_recent_cpu (void)
   return FP_TO_INT(a);
 }
 
-/* Idle thread.  Executes when no other thread is ready to run.
-
-   The idle thread is initially put on the ready list by
-   thread_start().  It will be scheduled once initially, at which
-   point it initializes idle_thread, "up"s the semaphore passed
-   to it to enable thread_start() to continue, and immediately
-   blocks.  After that, the idle thread never appears in the
-   ready list.  It is returned by next_thread_to_run() as a
-   special case when the ready list is empty. */
-static void
-thread_update_load_avg(void)
-{
-  // 59 * load_avg
-  FPReal a = FPR_MUL_INT(load_avg, 59);
-
-  int c = num_of_ready_or_running_threads();
-
-  // 59*load_avg +  running_or_ready_threads
-  FPReal b = FPR_ADD_INT(a, c);
-
-  load_avg = FPR_DIV_INT(b, 60);
-}
-
 /*
 ADDED IN PINTOS ASSIGNMENT 3.
 
@@ -810,21 +755,6 @@ thread_update_priorities(void)
       t->priority = thread_calc_mlfqs_priority(t);
     }
   }
-}
-
-/*
-IMPLEMENTED IN PINTOS ASSIGNMENT 3.
-
-Returns 100 times the current thread's recent_cpu value.
-
-return recent_cpu * 100
-*/
-int
-thread_get_recent_cpu(void)
-{
-  FPReal a = FPR_MUL_INT(thread_current()->recent_cpu, 100);
-
-  return FPR_TO_INT(a);
 }
 
 /*
