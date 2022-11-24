@@ -6,7 +6,7 @@
 typedef int Float;
 
 /* Number of bits reserved for the fractional part. */
-#define FRACBITS 14
+#define FRACBITS 15
 
 /* Convert a Float to int */
 static inline int FP_TO_INT (Float fpr);

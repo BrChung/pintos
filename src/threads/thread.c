@@ -21,6 +21,7 @@
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
+#define TIME_SLICE 4    // # of ticks per thread
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -141,6 +142,11 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  /* Enforce preemption. */
+  if (++thread_ticks >= TIME_SLICE) {
+    intr_yield_on_return ();
+  }
+
   /* Update mlfqs the recent_cpus and load_avg */
   if (thread_mlfqs) {
 
@@ -149,14 +155,10 @@ thread_tick (void)
       thread_update_load_avg();
     }
 
-    if (timer_ticks() % 4 == 0) {
+    if (thread_ticks % TIME_SLICE == 0) {
       thread_update_priorities();
     }
   }
-
-  /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
 }
 
 /* Prints thread statistics. */
