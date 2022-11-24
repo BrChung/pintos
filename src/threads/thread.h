@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+#include "fixed-point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -106,6 +107,10 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+    /* Support for mlfqs */
+    int nice;
+    Float recent_cpu;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -148,5 +153,10 @@ void find_donor(struct thread *t, int d);
 bool compare_priority(const struct list_elem *list1, const struct list_elem *list2, void *aux);
 void ready_sort(void);
 
+int thread_get_mlfqs_priority(struct thread* t);
+void thread_update_priorities(void);
+void thread_update_recent_cpus(void);
+void thread_update_recent_cpu(struct thread* t, void* aux);
+int num_of_ready_or_running_threads(void);
 
 #endif /* threads/thread.h */ 
