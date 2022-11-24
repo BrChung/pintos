@@ -279,7 +279,8 @@ lock_release (struct lock *lock)
     thread_current()->priority = thread_current()->priority_list[(thread_current()->p_size) - 1];
     lock->donate = false;
   }
-  if(thread_current()->d_num == 0 && !thread_mlfqs) // Wonder why we need this?
+  //if(thread_current()->d_num == 0)
+  if(thread_current()->d_num == 0 && !thread_mlfqs) // FLAG: Wonder why we need this?
   {
     thread_current()-> p_size = 1;
     thread_current()-> priority = thread_current()->priority_list[0];

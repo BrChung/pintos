@@ -130,10 +130,10 @@ struct thread
   /* Owned by thread.c. */
   unsigned magic; /* Detects stack overflow. */
 
-  /* ADDED IN PINTOS ASSIGNMENT 3 */
-  int nice;
-  FPReal recent_cpu;
-};
+    /* Support for mlfqs */
+    int nice;
+    Float recent_cpu;
+  };
 
 /*
 If false (default), use round-robin scheduler.

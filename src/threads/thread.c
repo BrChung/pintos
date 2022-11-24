@@ -96,12 +96,9 @@ static void thread_update_recent_cpu(struct thread* t, void* aux);
 static void thread_update_load_avg(void);
 static int num_of_ready_or_running_threads(void);
 static int thread_calc_mlfqs_priority(struct thread* t);
-/*
-load avg, often known as the system load average,
-estimates the average number of threads
-ready to run over the past minute.
-*/
-static FPReal load_avg = 0;
+
+/* Current load average */
+static Float load_avg = 0;
 
 static void schedule(void);
 
@@ -193,6 +190,8 @@ thread_tick(void)
   */
   FPR_INC(&t->recent_cpu);
 
+  FP_INC(&t->recent_cpu);
+
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
@@ -267,7 +266,12 @@ Priority scheduling is the goal of Problem 1-3.
 tid_t
 thread_create(const char* name, int priority, thread_func* function, void* aux)
 {
-  struct thread* t;
+  struct thread *t;
+  struct kernel_thread_frame *kf;
+  struct switch_entry_frame *ef;
+  struct switch_threads_frame *sf;
+  tid_t tid;
+  enum intr_level old_level;
 
   // fake stack frames
   struct kernel_thread_frame* kf;
@@ -297,6 +301,8 @@ thread_create(const char* name, int priority, thread_func* function, void* aux)
   */
   old_level = intr_disable();
 
+  old_level = intr_disable();
+
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame(t, sizeof *kf);
   kf->eip = NULL;
@@ -319,6 +325,10 @@ thread_create(const char* name, int priority, thread_func* function, void* aux)
 thread_yield();
 
   /* ADDED IN PINTOS ASSIGNMENT 3 */
+
+  if (t->priority > thread_current()->priority) {
+    thread_yield();
+  }
 
   if (t->priority > thread_current()->priority) {
     thread_yield();
@@ -460,15 +470,10 @@ thread_yield(void)
   struct thread* cur = thread_current();
   enum intr_level old_level;
 
-  ASSERT(!intr_context());
-
-  old_level = intr_disable();
-
+  old_level = intr_disable ();
   if (cur != idle_thread) {
-    list_push_back (&ready_list, &cur->elem); // for some reason this is needed to pass tests/threads/mlfqs-nice-10
-    //list_insert_ordered(&ready_list, &cur->elem, compare_priority, 0);
+    list_insert_ordered(&ready_list, &cur->elem, compare_priority, 0);
   }
-
   cur->status = THREAD_READY;
 
   schedule();
@@ -603,7 +608,7 @@ based on its recent_cpu and nice values.
 static int
 thread_calc_mlfqs_priority(struct thread* t)
 {
-  return PRI_MAX - FPR_TO_INT(FPR_DIV_INT(t->recent_cpu, 4)) - (t->nice * 2);
+  return PRI_MAX - FP_TO_INT(FP_DIV_INT(t->recent_cpu, 4)) - (t->nice * 2);
 }
 
 /*
@@ -653,13 +658,13 @@ static void
 thread_update_recent_cpu(struct thread* t, void* aux)
 {
   if (t->status == THREAD_READY || t->status == THREAD_RUNNING) {
-    FPReal* c = (FPReal*)aux;
+    Float* c = (Float*)aux;
 
     // (2 * load_avg) / (2 * load_avg + 1) * recent_cpu
-    FPReal d = FPR_MUL_FPR(*c, t->recent_cpu);
+    Float d = FP_MUL_FP(*c, t->recent_cpu);
 
     // Calculates d + 1, and returns its integer representation.
-    t->recent_cpu = FPR_ADD_INT(d, t->nice);
+    t->recent_cpu = FP_ADD_INT(d, t->nice);
   }
 }
 
@@ -675,13 +680,13 @@ static void
 thread_update_recent_cpus(void)
 {
   // (2 * load_avg)
-  FPReal a = FPR_MUL_INT(load_avg, 2);
+  Float a = FP_MUL_INT(load_avg, 2);
 
   // (2 * load_avg + 1)
-  FPReal b = FPR_ADD_INT(a, 1);
+  Float b = FP_ADD_INT(a, 1);
 
   // (2 * load_avg) / (2 * load_avg + 1)
-  FPReal c = FPR_DIV_FPR(a, b);
+  Float c = FP_DIV_FP(a, b);
 
   // Update the recent_cpu of all threads
   thread_foreach(thread_update_recent_cpu, &c);
@@ -690,9 +695,32 @@ thread_update_recent_cpus(void)
 /*
 ADDED IN PINTOS ASSIGNMENT 3.
 
-Returns the number of ready and running thread.
-*/
-static int
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+    struct thread* t = list_entry(e, struct thread, allelem);
+
+    if (t != idle_thread) {
+      t->priority = thread_get_mlfqs_priority(t);
+    }
+  }
+}
+
+/* Update the load_avg based on running threads */
+void
+thread_update_load_avg(void)
+{
+  // 59 * load_avg
+  Float a = FP_MUL_INT(load_avg, 59);
+
+  int c = num_of_ready_or_running_threads();
+
+  // 59*load_avg +  running_or_ready_threads
+  Float b = FP_ADD_INT(a, c);
+
+  load_avg = FP_DIV_INT(b, 60);
+}
+
+/* Number of ready and running threads */
+int
 num_of_ready_or_running_threads(void)
 {
   // number of ready and running threads
@@ -715,9 +743,42 @@ num_of_ready_or_running_threads(void)
 /*
 ADDED IN PINTOS ASSIGNMENT 3.
 
-Called every second to compute the following:
-load_avg = (59/60)*load_avg + (1/60)*num_of_ready_or_running_threads()
-*/
+  // Set the new priority of the current thread based on nice value
+  // Yield CPU if the priority is not the highest value
+  thread_set_priority(thread_get_mlfqs_priority(thread_current()));
+}
+
+/* Returns the current thread's nice value. */
+int
+thread_get_nice (void) 
+{
+  return FP_TO_INT(thread_current()->nice);
+}
+
+/* Returns 100 times the system load average. */
+int
+thread_get_load_avg (void) 
+{
+  return FP_TO_INT(FP_MUL_INT(load_avg, 100));
+}
+
+/* Returns 100 times the current thread's recent_cpu value. */
+int
+thread_get_recent_cpu (void) 
+{
+  Float a = FP_MUL_INT(thread_current()->recent_cpu, 100);
+  return FP_TO_INT(a);
+}
+
+/* Idle thread.  Executes when no other thread is ready to run.
+
+   The idle thread is initially put on the ready list by
+   thread_start().  It will be scheduled once initially, at which
+   point it initializes idle_thread, "up"s the semaphore passed
+   to it to enable thread_start() to continue, and immediately
+   blocks.  After that, the idle thread never appears in the
+   ready list.  It is returned by next_thread_to_run() as a
+   special case when the ready list is empty. */
 static void
 thread_update_load_avg(void)
 {
