@@ -188,7 +188,6 @@ thread_tick(void)
   thread_tick is called at each timer interrupt,
   where we increment the recent_cpu.
   */
-  FP_INC(&t->recent_cpu);
 
   FP_INC(&t->recent_cpu);
 
@@ -291,7 +290,6 @@ thread_create(const char* name, int priority, thread_func* function, void* aux)
   Do this atomically so intermediate values for the 'stack'
   member cannot be observed.
   */
-  old_level = intr_disable();
 
   old_level = intr_disable();
 
