@@ -129,7 +129,7 @@ thread_tick (void)
 {
   struct thread *t = thread_current ();
 
-  FPR_INC(&t->recent_cpu);
+  FP_INC(&t->recent_cpu);
 
   /* Update statistics. */
   if (t == idle_thread)
@@ -385,7 +385,7 @@ thread_get_priority (void)
 int
 thread_get_mlfqs_priority(struct thread* t)
 {
-  return PRI_MAX - FPR_TO_INT(FPR_DIV_INT(t->recent_cpu, 4)) - (t->nice * 2);
+  return PRI_MAX - FP_TO_INT(FP_DIV_INT(t->recent_cpu, 4)) - (t->nice * 2);
 }
 
 /* Updates recent_cpu on thread */
@@ -396,10 +396,10 @@ thread_update_recent_cpu(struct thread* t, void* aux)
     Float* c = (Float*)aux;
 
     // (2 * load_avg) / (2 * load_avg + 1) * recent_cpu
-    Float d = FPR_MUL_FPR(*c, t->recent_cpu);
+    Float d = FP_MUL_FP(*c, t->recent_cpu);
 
     // Calculates d + 1, and returns its integer representation.
-    t->recent_cpu = FPR_ADD_INT(d, t->nice);
+    t->recent_cpu = FP_ADD_INT(d, t->nice);
   }
 }
 
@@ -408,13 +408,13 @@ void
 thread_update_recent_cpus(void)
 {
   // (2 * load_avg)
-  Float a = FPR_MUL_INT(load_avg, 2);
+  Float a = FP_MUL_INT(load_avg, 2);
 
   // (2 * load_avg + 1)
-  Float b = FPR_ADD_INT(a, 1);
+  Float b = FP_ADD_INT(a, 1);
 
   // (2 * load_avg) / (2 * load_avg + 1)
-  Float c = FPR_DIV_FPR(a, b);
+  Float c = FP_DIV_FP(a, b);
 
   // Update the recent_cpu of all threads
   thread_foreach(thread_update_recent_cpu, &c);
@@ -440,14 +440,14 @@ void
 thread_update_load_avg(void)
 {
   // 59 * load_avg
-  Float a = FPR_MUL_INT(load_avg, 59);
+  Float a = FP_MUL_INT(load_avg, 59);
 
   int c = num_of_ready_or_running_threads();
 
   // 59*load_avg +  running_or_ready_threads
-  Float b = FPR_ADD_INT(a, c);
+  Float b = FP_ADD_INT(a, c);
 
-  load_avg = FPR_DIV_INT(b, 60);
+  load_avg = FP_DIV_INT(b, 60);
 }
 
 /* Number of ready and running threads */
@@ -485,22 +485,22 @@ thread_set_nice (int nice UNUSED)
 int
 thread_get_nice (void) 
 {
-  return FPR_TO_INT(thread_current()->nice);
+  return FP_TO_INT(thread_current()->nice);
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  return FPR_TO_INT(FPR_MUL_INT(load_avg, 100));
+  return FP_TO_INT(FP_MUL_INT(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  Float a = FPR_MUL_INT(thread_current()->recent_cpu, 100);
-  return FPR_TO_INT(a);
+  Float a = FP_MUL_INT(thread_current()->recent_cpu, 100);
+  return FP_TO_INT(a);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
