@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -90,14 +91,17 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
-    uint64_t wakeup_timer;
-
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+    uint32_t *pagedir;                 /* Page directory. */
+    struct list child_process_list;    /* List containing each child process. */
+    int exit_status;                   /* Stores the status upon exit */
+    bool is_waited_for;                /* Used to keep track if the processes parent is waiting. */
+    struct list_elem child_elem;       /* Used to keep track of the element in the child list. */
+    struct semaphore being_waited_on;  /* Used to put a parent thread to sleep when it needs to wait for a child. */
 #endif
 
     /* Owned by thread.c. */
@@ -127,9 +131,6 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
-void thread_set_wakeup_timer(int);
-int thread_get_status(struct thread *t);
-int64_t thread_get_wakeup(struct thread *t);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

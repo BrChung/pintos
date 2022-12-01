@@ -30,9 +30,6 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
-/* New function to check if thread is asleep */
-static void timer_alarmclock (struct thread *t, void *aux);
-
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -92,25 +89,11 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  if (ticks <= 0) {
-    return;
-  }
-
-  ASSERT (intr_get_level () == INTR_ON);
-
   int64_t start = timer_ticks ();
 
-  // Busy waiting
-  //
-  // while (timer_elapsed (start) < ticks) 
-  //   thread_yield ();
-
-  /* setting wakeup timer */
-  thread_set_wakeup_timer(start + ticks);
-
-  intr_disable();
-  thread_block();
-  intr_enable();  
+  ASSERT (intr_get_level () == INTR_ON);
+  while (timer_elapsed (start) < ticks) 
+    thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -189,9 +172,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-
-  /*using built in function to apply a alarm clock check to every thread*/
-  thread_foreach(timer_alarmclock,0);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -263,16 +243,4 @@ real_time_delay (int64_t num, int32_t denom)
      the possibility of overflow. */
   ASSERT (denom % 1000 == 0);
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
-}
-
-/*The alarm clock that 1. checks if the thread is asleep and 2. checks if it is at or past its
-wakeup time. If both these conditions are met, unblock the thread*/
-static void 
-timer_alarmclock (struct thread *t, void *aux)
-{
-  (void)aux;
-  if((thread_get_status(t) == 3) && (thread_get_wakeup(t) <= timer_ticks()))
-  {
-    thread_unblock(t);
-  }
 }
