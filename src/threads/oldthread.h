@@ -4,9 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-#include "synch.h"
-#include "threads/synch.h"
-#include "fixed-point.h"
+#include <kernel/list.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -92,31 +90,18 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int64_t wakeup_timer;
-    int d_num;
-    int priority_list[9]; // priority list
-    int p_size; // priority list size
-    struct lock *wait;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    int64_t waketick;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                 /* Page directory. */
-    struct list child_process_list;    /* List containing each child process. */
-    int exit_status;                   /* Stores the status upon exit */
-    bool is_waited_for;                /* Used to keep track if the processes parent is waiting. */
-    struct list_elem child_elem;       /* Used to keep track of the element in the child list. */
-    struct semaphore being_waited_on;  /* Used to put a parent thread to sleep when it needs to wait for a child. */
+    uint32_t *pagedir;                  /* Page directory. */
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
-    /* Support for mlfqs */
-    int nice;
-    Float recent_cpu;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -154,15 +139,6 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+bool cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux);
 
-void find_donor(struct thread *t, int d);
-bool compare_priority(const struct list_elem *list1, const struct list_elem *list2, void *aux);
-void ready_sort(void);
-
-int thread_get_mlfqs_priority(struct thread* t);
-void thread_update_priorities(void);
-void thread_update_recent_cpus(void);
-void thread_update_recent_cpu(struct thread* t, void* aux);
-int num_of_ready_or_running_threads(void);
-
-#endif /* threads/thread.h */ 
+#endif /* threads/thread.h */

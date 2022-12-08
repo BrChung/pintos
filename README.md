@@ -12,3 +12,8 @@ This repository also contains some changes made by [Ryan Huang](huang@cs.jhu.edu
 cd ~/Pintos/pintos/src/threads/build
 make check
 ```
+
+```bash
+cd ~/Pintos/pintos/src/userprog/build
+make check
+```
