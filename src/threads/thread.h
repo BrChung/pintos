@@ -114,6 +114,8 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
+   bool being_waited_on;
+
     /* Support for mlfqs */
     int nice;
     Float recent_cpu;
