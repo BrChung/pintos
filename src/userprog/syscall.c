@@ -5,16 +5,31 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
-#include "threads/init.h" // Imports shutdown_power_off() for use in halt()
+
 
 static void syscall_handler (struct intr_frame *);
 
 static struct thread *matching_thread;
 static tid_t current_tid;
 
+/* Creates a struct to insert files and their respective file descriptor into
+   the file_descriptors list for the current thread. */
+struct thread_file
+{
+    struct list_elem file_elem;
+    struct file *file_addr;
+    int file_descriptor;
+};
+
+/* Lock is in charge of ensuring that only one process can access the file system at one time. */
+struct lock lock_filesys;
+
 void
 syscall_init (void)
 {
+  /* Initialize the lock for the file system. */
+  lock_init(&lock_filesys);
+
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -27,6 +42,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     /* Holds the stack arguments that directly follow the system call. */
     int args[3];
+
+    /* Stores the physical page pointer. */
+    void * phys_page_ptr;
 
 	/* Get the value of the system call (based on enum) and call corresponding syscall function. */
 	switch(*(int *) f->esp)
@@ -53,6 +71,22 @@ syscall_handler (struct intr_frame *f UNUSED)
 
 			/* Return the result of the write() function in the eax register. */
 			f->eax = write(args[0], (const void *) args[1], (unsigned) args[2]);
+			break;
+
+		case SYS_OPEN:
+			/* The first argument is the name of the file to be opened. */
+			get_stack_arguments(f, &args[0], 1);
+
+			/* Ensures that converted address is valid. */
+			phys_page_ptr = pagedir_get_page(thread_current()->pagedir, (const void *) args[0]);
+			if (phys_page_ptr == NULL)
+			{
+				exit(-1);
+			}
+			args[0] = (int) phys_page_ptr;
+
+			/* Return the result of the remove() function in the eax register. */
+			f->eax = open((const char *) args[0]);
 			break;
 
 		default:
@@ -120,4 +154,33 @@ void get_stack_arguments (struct intr_frame *f, int *args, int num_of_args)
       check_valid_addr((const void *) ptr);
       args[i] = *ptr;
     }
+}
+
+/* Opens a file with the given name, and returns the file descriptor assigned by the
+   thread that opened it. Inspiration derived from GitHub user ryantimwilson (see
+   Design2.txt for attribution link). */
+int open (const char *file)
+{
+  /* Make sure that only one process can get ahold of the file system at one time. */
+  lock_acquire(&lock_filesys);
+
+  struct file* f = filesys_open(file);
+
+  /* If no file was created, then return -1. */
+  if(f == NULL)
+  {
+    lock_release(&lock_filesys);
+    return -1;
+  }
+
+  /* Create a struct to hold the file/fd, for use in a list in the current process.
+     Increment the fd for future files. Release our lock and return the fd as an int. */
+  struct thread_file *new_file = malloc(sizeof(struct thread_file));
+  new_file->file_addr = f;
+  int fd = thread_current ()->cur_fd;
+  thread_current ()->cur_fd++;
+  new_file->file_descriptor = fd;
+  list_push_front(&thread_current ()->file_descriptors, &new_file->file_elem);
+  lock_release(&lock_filesys);
+  return fd;
 }

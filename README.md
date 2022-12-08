@@ -12,3 +12,13 @@ This repository also contains some changes made by [Ryan Huang](huang@cs.jhu.edu
 cd ~/Pintos/pintos/src/threads/build
 make check
 ```
+
+pintos-mkdisk filesys.dsk --filesys-size=2
+pintos -p ~/Pintos/pintos/src/examples/echo -a echo -- -f -q run 'echo x'
+
+
+```bash
+cd ~/Pintos/pintos/src/userprog && make
+cd ~/Pintos/pintos/src/userprog/build
+make check
+```

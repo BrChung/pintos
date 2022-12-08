@@ -474,6 +474,13 @@ init_thread (struct thread *t, const char *name, int priority)
   /* Init the threads list of processes it creates. */
   list_init(&t->child_process_list);
 
+  /* Init the list of file descriptors for this thread, which holds all of the files that this thread has open. */
+  list_init(&t->file_descriptors);
+
+  /* Initalize the next available file descriptor to 2 (0 and 1 are reserved
+     for STDIN and STDOUT, respectively). */
+  t->cur_fd = 2;
+
   /* Init the semaphore in charge of putting a parent thread to sleep,. */
   sema_init(&t->being_waited_on, 0);
 
