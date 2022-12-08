@@ -3,7 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
-#include <stdint.h>
+//#include <stdint.h>
 #include "synch.h"
 #include "threads/synch.h"
 #include "fixed-point.h"
@@ -114,7 +114,7 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
-   bool being_waited_on;
+    bool being_waited_on;
 
     /* Support for mlfqs */
     int nice;
