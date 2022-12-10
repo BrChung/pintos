@@ -21,6 +21,9 @@ Brian Chung <bchung4@uci.edu>
 > > preparing your submission, other than the Pintos documentation, course
 > > text, lecture notes, and course staff.
 
+Inspiration from:
+https://github.com/ChristianJHughes/pintos-project2
+
                ARGUMENT PASSING
                ================
 
@@ -33,16 +36,13 @@ Brian Chung <bchung4@uci.edu>
 In thread.h:
 struct thread {
 ...
-int64_t wakeup_timer;
+    struct semaphore thread_sema;      put a parent thread to sleep when it needs to wait for a child
+    bool waiting;                      keep track if the processes parent is waiting
+    uint32_t *pagedir;                 page directory
+    struct list child_processes;       all child processes
+    int exit_status;                   status on exit
+    struct list_elem child_elem;       elements in the child list
 }
-The attribute in the thread struct stores the earliest wake up time for the sleeping thread.
-
-struct semaphore global_sema; in process.c
--This semaphore is used to synch the main and child processes.
-struct thread\* get_thread(tid_t) in thread.h
--This function is used to get a thread from a tid_t, which is used in process_wait get the child thread.
-Static unsigned char COMMAND_LINE_LIMIT in process.c
--A constant we used for the limit of the amount of bytes for command line arguments.
 
 ---- ALGORITHMS ----
 
@@ -50,13 +50,18 @@ Static unsigned char COMMAND_LINE_LIMIT in process.c
 > > you arrange for the elements of argv[] to be in the right order?
 > > How do you avoid overflowing the stack page?
 
+
 ---- RATIONALE ----
 
 > > A3: Why does Pintos implement strtok_r() but not strtok()?
+Pintos implements strtok_r() but not strtok() because strtok() is not thread-safe, meaning that it can cause problems when multiple threads are trying to access the same string simultaneously. Strtok_r(), on the other hand, is thread-safe, meaning that it can safely be used by multiple threads at the same time.
 
 > > A4: In Pintos, the kernel separates commands into a executable name
 > > and arguments. In Unix-like systems, the shell does this
 > > separation. Identify at least two advantages of the Unix approach.
+The Unix approach of having the shell divide commands provides Users with more flexibility than if the Kernel had to make those decisions. If there is a change, only the shell needs to be updated, rather than the entire Kernel. Additionally, the Kernel should be precise and fast, therefore having it do complex parsing of string commands can be inefficient and vulnerable to errors.
+
+Another advantage of the Unix approach is that it allows for more powerful scripting capabilities. Commands can be combined into a script that can be run with a single command, allowing for automation of tasks. This is not possible with the Pintos approach since the Kernel does not handle such complex string parsing.
 
                  SYSTEM CALLS
                  ============
@@ -67,8 +72,8 @@ Static unsigned char COMMAND_LINE_LIMIT in process.c
 `struct' member, global or static variable, `typedef', or
 > > enumeration. Identify the purpose of each in 25 words or less.
 
-In syscall.h
-typedef int pid_t;
+In syscall.h:
+typedef int pid_t; Identifier for process
 
 > > B2: Describe how file descriptors are associated with open files.
 > > Are file descriptors unique within the entire OS or just within a
@@ -110,12 +115,16 @@ typedef int pid_t;
 > > loading. How does your code ensure this? How is the load
 > > success/failure status passed back to the thread that calls "exec"?
 
+Not needed
+
 > > B8: Consider parent process P with child process C. How do you
 > > ensure proper synchronization and avoid race conditions when P
 > > calls wait(C) before C exits? After C exits? How do you ensure
 > > that all resources are freed in each case? How about when P
 > > terminates without waiting, before C exits? After C exits? Are
 > > there any special cases?
+
+Not needed
 
 ---- RATIONALE ----
 
