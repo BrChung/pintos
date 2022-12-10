@@ -316,7 +316,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file = filesys_open (argv[0]);
   if (file == NULL)
     {
-      printf ("loading: %s: open failed\n", argv[0]);
+      printf ("load: %s: open failed\n", argv[0]);
       goto done;
     }
 
@@ -329,7 +329,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024)
     {
-      printf ("load: %s: error loading program\n", argv[0]);
+      printf ("load: %s: error loading executable\n", argv[0]);
       goto done;
     }
 
