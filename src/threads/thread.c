@@ -184,9 +184,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-  /* Prepare thread for first run by initializing its stack.
-     Do this atomically so intermediate values for the 'stack'
-     member cannot be observed. */
+  // initialize stack to old level
   old_level = intr_disable ();
 
   /* Stack frame for kernel_thread(). */
@@ -298,7 +296,7 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  sema_up(&thread_current ()->being_waited_on); /* Tell my parent thread to stop waiting. */
+  sema_up(&thread_current ()->thread_sema); // let parent thread go
   list_remove (&thread_current ()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -471,25 +469,16 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  /* Init the threads list of processes it creates. */
-  list_init(&t->child_process_list);
+  sema_init(&t->thread_sema, 0); // default sema
 
-  /* Init the list of file descriptors for this thread, which holds all of the files that this thread has open. */
+  // Init child proccess and file descriptor list
+  list_init(&t->child_processes);
   list_init(&t->file_descriptors);
 
-  /* Initalize the next available file descriptor to 2 (0 and 1 are reserved
-     for STDIN and STDOUT, respectively). */
-  t->cur_fd = 2;
-
-  /* Init the semaphore in charge of putting a parent thread to sleep,. */
-  sema_init(&t->being_waited_on, 0);
-
-  /* We assume the exit status is bad, unless exit() is properly
-     called (and it is assigned otherwise). */
-  t->exit_status = -1;
-
-  /* Init the thread to show it has not been waited on. */
-  t->is_waited_for = false;
+  
+  t->cur_fd = 2; // set file descriptor to 2
+  t->exit_status = -1; // bad exit by default on error
+  t->waiting = false; // go!
 
   list_push_back (&all_list, &t->allelem);
 }

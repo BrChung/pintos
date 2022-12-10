@@ -43,13 +43,11 @@ process_execute (const char *file_name)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE); /* Makes a copy of the entire command line string, args included. */
+  strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Create a new string that contains soley the program name. */
   char * save_ptr;
   char * name = strtok_r((char *)file_name, " ", &save_ptr);
 
-  /* Ensure that we weren't passed a NULL command line string (all spaces, for examples). */
   if (name == NULL)
   {
     return -1;
@@ -64,11 +62,10 @@ process_execute (const char *file_name)
   }
   else
   {
-    /* If the thread created is a valid thread, then we must disable interupts, and add it to this threads list of child threads. */
     current_tid = tid;
     enum intr_level old_level = intr_disable ();
     thread_foreach(*find_tid, NULL);
-    list_push_front(&thread_current()->child_process_list, &matching_thread->child_elem);
+    list_push_front(&thread_current()->child_processes, &matching_thread->child_elem);
     intr_set_level (old_level);
   }
   return tid;
@@ -116,21 +113,14 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-  // puts("CALLLLLEEED");
   /* The child thread that we're waiting on to return. */
   struct thread *child_thread = NULL;
 
   /* list element to iterate the list of child threads. */
   struct list_elem *temp;
 
-  /* If this thread has no children, we don't need to wait. */
-  // if(list_empty(&thread_current()->child_process_list))
-  // {
-  //   return -1;
-  // }
-
   /* Look to see if the child thread in question is our child. */
-  for (temp = list_front(&thread_current()->child_process_list); temp != NULL; temp = temp->next)
+  for (temp = list_front(&thread_current()->child_processes); temp != NULL; temp = temp->next)
   {
       struct thread *t = list_entry (temp, struct thread, child_elem);
       if (t->tid == child_tid)
@@ -150,13 +140,13 @@ process_wait (tid_t child_tid UNUSED)
   }
 
   /* If we've already waited on this child, then we shall not wait again. */
-  if(child_thread->is_waited_for)
+  if(child_thread->waiting)
   {
     return -1;
   }
   else
   {
-    child_thread->is_waited_for = true;
+    child_thread->waiting = true;
   }
 
   // printf("CUR THREAD: %s\n", thread_current()->name);
@@ -174,17 +164,10 @@ process_wait (tid_t child_tid UNUSED)
 
   // printf("%s", thread_current()->name);
 
-  // LOL
-  sema_down(&child_thread->being_waited_on);
+  // LOL nice.
+  sema_down(&child_thread->thread_sema);
 
-  /* After our kiddo is dead, we return its exit status. */
   return child_thread->exit_status;
-
-  // while (true)
-  // {
-
-  // }
-  // return -1;
 }
 
 /* Free the current process's resources. */
@@ -318,30 +301,22 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  /* For use in the string tokenizer below... */
   char *token, *save_ptr;
-  /* List of all command line arguments. 25 is a somewhat arbitrary limit,
-     informed by the 128 byte pintos command line limit. */
-  char *argv[25];
-  /* The number of arguments passed in on the command line (includes the program name),
-     so argc will always be at least 1. */
+  char *argv[25]; //25 from pintos
   int argc = 0;
 
-  /* Tokenize the command line string with a " " (space) as a delimeter. */
-  for(token = strtok_r((char *)file_name, " ", &save_ptr); token != NULL;
-    token = strtok_r(NULL, " ", &save_ptr))
+  token = strtok_r((char *)file_name, " ", &save_ptr);
+  while(token != NULL)
   {
-    /* Add token to the array of command line arguments. */
     argv[argc] = token;
-    argc++; /* Increment the number of args */
+    argc++;
+    token = strtok_r(NULL, " ", &save_ptr);
   }
 
-  /* Open executable file. Pass only the program name. */
   file = filesys_open (argv[0]);
   if (file == NULL)
     {
-      /* Pass only the program name. */
-      printf ("load: %s: open failed\n", argv[0]);
+      printf ("loading: %s: open failed\n", argv[0]);
       goto done;
     }
 
@@ -354,8 +329,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024)
     {
-      /* Pass only the program name. */
-      printf ("load: %s: error loading executable\n", argv[0]);
+      printf ("load: %s: error loading program\n", argv[0]);
       goto done;
     }
 
@@ -418,7 +392,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
         }
     }
 
-  /* Set up stack. Pass in the number of command line arguments, and the list of arguments themselves. */
   if (!setup_stack (esp, argc, argv))
     goto done;
 
@@ -555,32 +528,21 @@ setup_stack (void **esp, int argc, char *argv[])
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
       {
-        /* Stack initialization code insipired by the work of pindexis
-        (the full GitHub link of which is available in Design2.txt).
-        Mainly used to determine correct pointer types. */
-
-        /* Offset PHYS_BASE as instructed. */
+        // magic sauce
         *esp = PHYS_BASE - 12;
-        /* A list of addresses to the values that are intially added to the stack.  */
+        // stack vals
         uint32_t * arg_value_pointers[argc];
 
-        /* First add all of the command line arguments in descending order, including
-           the program name. */
         for(int i = argc-1; i >= 0; i--)
         {
-          /* Allocate enough space for the entire string (plus and extra byte for
-             '/0'). Copy the string to the stack, and add its reference to the array
-              of pointers. */
           *esp = *esp - sizeof(char)*(strlen(argv[i])+1);
           memcpy(*esp, argv[i], sizeof(char)*(strlen(argv[i])+1));
           arg_value_pointers[i] = (uint32_t *)*esp;
         }
-        /* Allocate space for & add the null sentinel. */
+
         *esp = *esp - 4;
         (*(int *)(*esp)) = 0;
 
-        /* Push onto the stack each char* in arg_value_pointers[] (each of which
-           references an argument that was previously added to the stack). */
         *esp = *esp - 4;
         for(int i = argc-1; i >= 0; i--)
         {
@@ -588,15 +550,11 @@ setup_stack (void **esp, int argc, char *argv[])
           *esp = *esp - 4;
         }
 
-        /* Push onto the stack a pointer to the pointer of the address of the
-           first argument in the list of arguments. */
         (*(uintptr_t **)(*esp)) = *esp + 4;
 
-        /* Push onto the stack the number of program arguments. */
         *esp = *esp - 4;
         *(int *)(*esp) = argc;
 
-        /* Push onto the stack a fake return address, which completes stack initialization. */
         *esp = *esp - 4;
         (*(int *)(*esp)) = 0;
       }
@@ -628,8 +586,7 @@ install_page (void *upage, void *kpage, bool writable)
 
 
 
-/* This function is passed to thread_foreach in order to find the thread
-   that matches a specific tid. */
+/* Find thread that matches specific tid. */
 static void find_tid (struct thread *t, void * aux UNUSED)
 {
   if(current_tid == t->tid)

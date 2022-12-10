@@ -95,15 +95,16 @@ struct thread
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
-    /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                 /* Page directory. */
-    struct list child_process_list;    /* List containing each child process. */
-    int exit_status;                   /* Stores the status upon exit */
-    bool is_waited_for;                /* Used to keep track if the processes parent is waiting. */
-    struct list_elem child_elem;       /* Used to keep track of the element in the child list. */
-    struct semaphore being_waited_on;  /* Used to put a parent thread to sleep when it needs to wait for a child. */
-    struct list file_descriptors;      /* List of file descriptors belonging to this therad. */
-    int cur_fd;                        /* An integer available file descriptor. */
+    //process.c.
+    struct semaphore thread_sema;      /* put a parent thread to sleep when it needs to wait for a child */
+    bool waiting;                      /* keep track if the processes parent is waiting */
+    uint32_t *pagedir;                 /* page directory */
+    struct list child_processes;       /* all child processes */
+    int exit_status;                   /* status on exit */
+    struct list_elem child_elem;       /* elements in the child list. */
+    // Open Files
+    struct list file_descriptors;      /* file descriptors for thread */
+    int cur_fd;                        /* integer available file descriptor */
 #endif
 
     /* Owned by thread.c. */
