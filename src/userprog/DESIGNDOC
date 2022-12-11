@@ -44,12 +44,15 @@ struct thread {
     struct list_elem child_elem;       elements in the child list
 }
 
+The above additions to the thread struct allow parent threads to monitor their child processes, allowing them to sleep, wake up, and exit depending on the state of their children.
+
 ---- ALGORITHMS ----
 
 > > A2: Briefly describe how you implemented argument parsing. How do
 > > you arrange for the elements of argv[] to be in the right order?
 > > How do you avoid overflowing the stack page?
 
+The setup_stack function takes care of argument passing. Before this, process_execute tokenizes the command line arguments into argv[]. The argv is then iterated in reverse and the pointer is decreased by the length of the argument in the initial index and the null terminator. Memory is copied from the vector to the stack pointer esp to 'place' the argument onto the stack. Consequently, the pointers to the arguments are stored for later use. Since the system is 32-bit, each pointer is only 4 bytes compared to the tokenized arguments, which can be of various length. To prevent stack page overflow, a length boundary is set on the argv string before tokenization.
 
 ---- RATIONALE ----
 
@@ -75,14 +78,31 @@ Another advantage of the Unix approach is that it allows for more powerful scrip
 In syscall.h:
 typedef int pid_t; Identifier for process
 
+In thread.h:
+struct thread {
+...
+    struct semaphore thread_sema;      put a parent thread to sleep when it needs to wait for a child
+    bool waiting;                      keep track if the processes parent is waiting
+    uint32_t *pagedir;                 page directory
+    struct list child_processes;       all child processes
+    int exit_status;                   status on exit
+    struct list_elem child_elem;       elements in the child list
+    struct list file_descriptors;      file descriptors for thread
+    int cur_fd;                        integer available file descriptor
+}
+
 > > B2: Describe how file descriptors are associated with open files.
 > > Are file descriptors unique within the entire OS or just within a
 > > single process?
+
+Each file descriptor is distinct within Pintos, so that the amount of data that needs to be saved for each process is limited.
 
 ---- ALGORITHMS ----
 
 > > B3: Describe your code for reading and writing user data from the
 > > kernel.
+
+All pointers must be validated to be below the PHYS_BASE address. If an invalid access (such as a null-pointer, a pointer to kernel address space, or another invalid memory operation) occurs, a page fault will be triggered and a page fault handler will be called. In the page fault handler, the registers will be reset and EAX will be set to -1 in the event of an invalid access in kernel. The process will then be directed to the next instruction using the EIP register. After that, a call to the file system read or write will be issued. The file system lock will be used to synchronize parallel read or write operations, and this lock must be acquired before reading from or writing to any file in the file system, and released after the operation is complete.
 
 > > B4: Suppose a system call causes a full page (4,096 bytes) of data
 > > to be copied from user space into the kernel. What is the least
@@ -91,8 +111,14 @@ typedef int pid_t; Identifier for process
 > > for a system call that only copies 2 bytes of data? Is there room
 > > for improvement in these numbers, and how much?
 
+The minimum amount of pages needed to store two bytes of data is 1, meaning that all the inspected data is stored in a single page and the pointer returned from pagedir_get_page is all that is needed to access the entire data stored without having to go through any further inspection. The maximum amount of pages needed to store two bytes of data is 2, which would mean that the inspected data is spread across two separate pages, thus requiring pagedir_get_page to be called once for each byte. It is impossible to avoid having to do two page lookups, thus no improvement can be made.
+
 > > B5: Briefly describe your implementation of the "wait" system call
 > > and how it interacts with process termination.
+
+Explain "halt" or "exit" instead.
+
+The "halt" system call simply calls the built in Pintos method `shutdown_power_off` which powers down the machine as long as it's running on Bochs or QEMU.
 
 > > B6: Any access to user program memory at a user-specified address
 > > can fail due to a bad pointer value. Such accesses must cause the
@@ -107,6 +133,8 @@ typedef int pid_t; Identifier for process
 > > allocated resources (locks, buffers, etc.) are freed? In a few
 > > paragraphs, describe the strategy or strategies you adopted for
 > > managing these issues. Give an example.
+
+The function check_valid_addr provide code which ensures that each pointer references a valid address. If a process attempts to access an invalid address, it is terminated. Once the process is going to be exited, all of its allocated resources are freed and its open files are closed. Finally, a call to exit is made with a status of -1 to indicate an error.
 
 ---- SYNCHRONIZATION ----
 
@@ -131,11 +159,17 @@ Not needed
 > > B9: Why did you choose to implement access to user memory from the
 > > kernel in the way that you did?
 
+We access user memory with the `get_stack_arguments` method. Our function allows us to quickly check the validity of an address.
+
 > > B10: What advantages or disadvantages can you see to your design
 > > for file descriptors?
 
+Our file descriptors are stored as a list within a thread. This design is simple but requires O(N) time to access a file descriptor. We may want to optimize in the future to support duplicated file descriptors in the case where a thread opens the same file multiple times.
+
 > > B11: The default tid_t to pid_t mapping is the identity mapping.
 > > If you changed it, what advantages are there to your approach?
+
+No changes were made.
 
                SURVEY QUESTIONS
                ================
@@ -148,6 +182,8 @@ the quarter.
 
 > > In your opinion, was this assignment, or any one of the three problems
 > > in it, too easy or too hard? Did it take too long or too little time?
+
+Not enough time
 
 > > Did you find that working on a particular part of the assignment gave
 > > you greater insight into some aspect of OS design?
