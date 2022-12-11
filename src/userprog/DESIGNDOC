@@ -22,7 +22,7 @@ Brian Chung <bchung4@uci.edu>
 > > text, lecture notes, and course staff.
 
 Inspiration from:
-https://github.com/ChristianJHughes/pintos-project2
+https://github.com/ChristianJHughes/pintos-project2 (setup_stack method and asm)
 
                ARGUMENT PASSING
                ================
