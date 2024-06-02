@@ -194,7 +194,7 @@ thread_create (const char *name, int priority,
   struct switch_threads_frame *sf;
   tid_t tid;
   enum intr_level old_level;
-
+  
   ASSERT (function != NULL);
 
   /* Allocate thread. */
@@ -322,7 +322,8 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  list_remove (&thread_current()->allelem);
+  sema_up(&thread_current ()->being_waited_on); /* Tell my parent thread to stop waiting. */
+  list_remove (&thread_current ()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -335,7 +336,7 @@ thread_yield (void)
 {
   struct thread *cur = thread_current ();
   enum intr_level old_level;
-  
+
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
@@ -601,6 +602,19 @@ init_thread (struct thread *t, const char *name, int priority)
   }
 
   t->magic = THREAD_MAGIC;
+
+  // /* Init the threads list of processes it creates. */
+  // list_init(&t->child_process_list);
+
+  // /* Init the semaphore in charge of putting a parent thread to sleep,. */
+  // sema_init(&t->being_waited_on, 0);
+
+  // /* We assume the exit status is bad, unless exit() is properly
+  //    called (and it is assigned otherwise). */
+  // t->exit_status = -1;
+
+  // /* Init the thread to show it has not been waited on. */
+  // t->is_waited_for = false;
 
   t->p_size = 1;
   t->d_num = 0;
